@@ -45,7 +45,7 @@ jobs:
             echo "--------------------"
             echo "   Create Instance  "
             echo "--------------------"
-            curl -X POST \
+            curl -s -X POST \
             -H "Authorization: Bearer $ACCESS_TOKEN" \
             -H "Content-Type: application/json" \
             --data-raw "{
