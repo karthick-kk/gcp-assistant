@@ -34,7 +34,7 @@ jobs:
           echo "--------------------"
           echo "Check Project Status"
           echo "--------------------"
-          curl -X GET \
+          curl -s -X GET \
           -H "Authorization: Bearer $ACCESS_TOKEN" \
           "https://cloudresourcemanager.googleapis.com/v3/projects/$PROJECT"
 
@@ -124,6 +124,7 @@ jobs:
           echo "--------------------"
           echo "   Get Instance IP  "
           echo "--------------------"
+          sleep 10
           IP=$(curl -s -X GET -H "Authorization: Bearer $ACCESS_TOKEN" \
           "https://compute.googleapis.com/compute/v1/projects/$PROJECT/zones/us-central1-a/instances/$INSTANCE_NAME" | jq -r '.networkInterfaces[].accessConfigs[].natIP'
           )
