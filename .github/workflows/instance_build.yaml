@@ -13,16 +13,15 @@ on:
         type: boolean
         default: true
 jobs:
-  testapi:
+  invoke-gcp-api:
     runs-on: ubuntu-latest
     steps:
-      - name: First API call
+      - name: Build Instance
         env:
           REFRESH_TOKEN: ${{ secrets.REFRESH_TOKEN }}
           INSTANCE_NAME: ${{ github.event.inputs.INSTANCE_NAME }}
           PROJECT: ${{ github.event.inputs.PROJECT }}
         run: |
-          sudo apt update && sudo apt install -y jq
           ACCESS_TOKEN=$(curl -s --location --request POST 'https://oauth2.googleapis.com/token' \
           --header 'Content-Type: application/json' \
           --data-raw "{
@@ -121,3 +120,11 @@ jobs:
             }" \
             "https://compute.googleapis.com/compute/v1/projects/$PROJECT/zones/us-central1-a/instances"
           fi
+
+          echo "--------------------"
+          echo "   Get Instance IP  "
+          echo "--------------------"
+          IP=$(curl -s -X GET -H "Authorization: Bearer $ACCESS_TOKEN" \
+          "https://compute.googleapis.com/compute/v1/projects/$PROJECT/zones/us-central1-a/instances/$INSTANCE_NAME" | jq -r '.networkInterfaces[].accessConfigs[].natIP'
+          )
+          echo "Instance IP: $IP"
