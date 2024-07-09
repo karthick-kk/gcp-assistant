@@ -1,0 +1,123 @@
+on:
+  workflow_dispatch:
+    inputs:
+      INSTANCE_NAME:
+        description: "Instance Name"
+        type: string
+      PROJECT:
+        description: "GCP Project ID"
+        type: string
+        default: "able-scope-428015-r1"
+      CREATE:
+        description: "Create Instance"
+        type: boolean
+        default: true
+jobs:
+  testapi:
+    runs-on: ubuntu-latest
+    steps:
+      - name: First API call
+        env:
+          REFRESH_TOKEN: ${{ secrets.REFRESH_TOKEN }}
+          INSTANCE_NAME: ${{ github.event.inputs.INSTANCE_NAME }}
+          PROJECT: ${{ github.event.inputs.PROJECT }}
+        run: |
+          sudo apt update && sudo apt install -y jq
+          ACCESS_TOKEN=$(curl -s --location --request POST 'https://oauth2.googleapis.com/token' \
+          --header 'Content-Type: application/json' \
+          --data-raw "{
+              \"client_id\": \"764086051850-6qr4p6gpi6hn506pt8ejuq83di341hur.apps.googleusercontent.com\",
+              \"client_secret\": \"d-FL95Q19q7MQmFpd7hHD0Ty\",
+              \"refresh_token\": \"$REFRESH_TOKEN\",
+              \"grant_type\": \"refresh_token\"
+          }" | jq -r .access_token)
+
+          echo "--------------------"
+          echo "Check Project Status"
+          echo "--------------------"
+          curl -X GET \
+          -H "Authorization: Bearer $ACCESS_TOKEN" \
+          "https://cloudresourcemanager.googleapis.com/v3/projects/$PROJECT"
+
+          echo "--------------------"
+          echo "Create GCP Instance "
+          echo "--------------------"
+          if [ ${{ github.event.inputs.CREATE }} ]; then
+            echo "--------------------"
+            echo "   Create Instance  "
+            echo "--------------------"
+            curl -X POST \
+            -H "Authorization: Bearer $ACCESS_TOKEN" \
+            -H "Content-Type: application/json" \
+            --data-raw "{
+            \"canIpForward\": false,
+            \"confidentialInstanceConfig\": {
+              \"enableConfidentialCompute\": false
+            },
+            \"deletionProtection\": false,
+            \"description\": \"\",
+            \"disks\": [
+              {
+                \"autoDelete\": true,
+                \"boot\": true,
+                \"deviceName\": \"$INSTANCE_NAME\",
+                \"diskEncryptionKey\": {},
+                \"initializeParams\": {
+                  \"diskSizeGb\": \"500\",
+                  \"diskType\": \"projects/$PROJECT/zones/us-central1-f/diskTypes/pd-standard\",
+                  \"labels\": {},
+                  \"sourceImage\": \"projects/debian-cloud/global/images/debian-12-bookworm-v20240701\"
+                },
+                \"mode\": \"READ_WRITE\",
+                \"type\": \"PERSISTENT\"
+              }
+            ],
+            \"displayDevice\": {
+              \"enableDisplay\": false
+            },
+            \"guestAccelerators\": [],
+            \"instanceEncryptionKey\": {},
+            \"keyRevocationActionType\": \"NONE\",
+            \"labels\": {
+              \"goog-ec-src\": \"vm_add-rest\"
+            },
+            \"machineType\": \"projects/$PROJECT/zones/us-central1-a/machineTypes/c2d-standard-8\",
+            \"metadata\": {
+              \"items\": []
+            },
+            \"name\": \"$INSTANCE_NAME\",
+            \"networkInterfaces\": [
+              {
+                \"accessConfigs\": [
+                  {
+                    \"name\": \"External NAT\",
+                    \"networkTier\": \"PREMIUM\"
+                  }
+                ],
+                \"stackType\": \"IPV4_ONLY\",
+                \"subnetwork\": \"projects/$PROJECT/regions/us-central1/subnetworks/default\"
+              }
+            ],
+            \"params\": {
+              \"resourceManagerTags\": {}
+            },
+            \"reservationAffinity\": {
+              \"consumeReservationType\": \"ANY_RESERVATION\"
+            },
+            \"scheduling\": {
+              \"automaticRestart\": true,
+              \"onHostMaintenance\": \"MIGRATE\",
+              \"provisioningModel\": \"STANDARD\"
+            },
+            \"shieldedInstanceConfig\": {
+              \"enableIntegrityMonitoring\": true,
+              \"enableSecureBoot\": false,
+              \"enableVtpm\": true
+            },
+            \"tags\": {
+              \"items\": []
+            },
+            \"zone\": \"projects/$PROJECT/zones/us-central1-a\"
+            }" \
+            "https://compute.googleapis.com/compute/v1/projects/$PROJECT/zones/us-central1-a/instances"
+          fi
